@@ -1,0 +1,11 @@
+[package]
+name = "monke_script_compiler"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cranelift = "0.77.0"
+cranelift-module = "0.77.0"
+cranelift-jit = "0.77.0"
