@@ -4,7 +4,9 @@ Monkescript has only 1 type, i64. Strings are constant char* and wont allow basi
 
 Scope does not exist as all variables are declared as 0 and live for the entire function body. This means that you can access a variable before it is set and it will return 0.
 
-Functions can be declared out of order (fuck you c++)
+Functions can be declared out of order (fuck you c++).
+
+Snake case is also not alowed anywhere as the lexer does not registrer "_"
 
 Hello world looks like this:
 1. `seed` for main (and `farm` for function)
@@ -20,7 +22,7 @@ seed main() {
 ```
 A more complicated example
 ```
-farm getword(arg) {
+farm getWord(arg) {
 	if arg == 2 {
 		"Hello"
 	} else {
@@ -30,13 +32,13 @@ farm getword(arg) {
 
 
 seed main() {
-	a = getword(1)
-	yell("%s %s!\n", a, getword(2))
+	a = getWord(1)
+	yell("%s %s!\n", a, getWord(2))
 	
-	getexitcode()
+	getExitcode()
 }
 
-farm getexitcode() {
+farm getExitcode() {
 	10*2+2 + { a = 5 a*2+10 }
 }
 ```
