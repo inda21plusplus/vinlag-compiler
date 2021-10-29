@@ -21,7 +21,7 @@ pub enum Token {
     IFBREAK,
 
     IDENTIFIER(String),
-    COLON,
+    //COLON,
 
     INT(i64),
     //FLOAT(f64),
@@ -36,6 +36,15 @@ pub enum Token {
     GREATER,
     LESS,
     NOT,
+
+    POW,
+
+    BITAND,
+    BITOR,
+    BITXOR,
+    BITNOT,
+    BITLSHIFT,
+    BITRSHIFT,
 
     LPAREN,
     RPAREN,
@@ -67,7 +76,7 @@ impl Token {
             Token::WHILE => WHILE_TEXT,
             Token::FOR => FOR_TEXT,
             Token::IDENTIFIER(str) => str,
-            Token::COLON => ":",
+            Token::POW => "^",
             Token::PLUS => "+",
             Token::MINUS => "-",
             Token::TIMES => "*",
@@ -82,6 +91,12 @@ impl Token {
             Token::NOT => "!",
             Token::MODULUS => "%",
             Token::BREAK => BREAK_TEXT,
+            Token::BITAND => " and ",
+            Token::BITOR => " or ",
+            Token::BITXOR => " xor ",
+            Token::BITNOT => " not ",
+            Token::BITLSHIFT => " >> ",
+            Token::BITRSHIFT => " << ",
             _ => "ERR"
         }
         .to_string()
@@ -98,6 +113,14 @@ const FOR_TEXT: &str = "for";
 const BREAK_TEXT: &str = "br";
 const IFBREAK_TEXT: &str = "ifbr";
 const STRING_CHAR: char = '\"';
+
+const BITAND_TEXT: &str = "and";
+const BITOR_TEXT: &str = "or";
+const BITXOR_TEXT: &str = "xor";
+const BITNOT_TEXT: &str = "not";
+const BITLSHIFT_TEXT: &str = "left";
+const BITRSHIFT_TEXT: &str = "right";
+
 
 fn next_char(indec: &mut std::str::CharIndices) -> Option<char> {
     if let Some((_, c)) = indec.next() {
@@ -168,6 +191,26 @@ fn get_tokens(buffer: &String) -> Vec<Token> {
                     IFBREAK_TEXT => {
                         list.push(Token::IFBREAK);
                     }
+                    BITAND_TEXT => {
+                        list.push(Token::BITAND);
+                    }
+                    
+                    BITLSHIFT_TEXT => {
+                        list.push(Token::BITLSHIFT);
+                    }
+                    BITRSHIFT_TEXT => {
+                        list.push(Token::BITRSHIFT);
+                    }
+                    
+                    BITNOT_TEXT => {
+                        list.push(Token::BITNOT);
+                    }
+                    BITOR_TEXT => {
+                        list.push(Token::BITOR);
+                    }
+                    BITXOR_TEXT => {
+                        list.push(Token::BITXOR);
+                    }
                     _ => {
                         list.push(Token::IDENTIFIER(identifier_str));
                     }
@@ -219,7 +262,7 @@ fn get_tokens(buffer: &String) -> Vec<Token> {
                     '/' => Some(Token::DIVIDE),
                     '(' => Some(Token::LPAREN),
                     ')' => Some(Token::RPAREN),
-                    ':' => Some(Token::COLON),
+                    '^' => Some(Token::POW),
                     '{' => Some(Token::LCURLY),
                     '}' => Some(Token::RCURLY),
                     '=' => Some(Token::EQUALS),

@@ -4,6 +4,7 @@ use crate::{jit, Token};
 
 // box to not trigger infinate size error
 pub enum Expr {
+    ///0 = %s, 1 = %d
     String(i64), // index to the const string
     Int(i64),
     Identifier(String),
@@ -19,6 +20,13 @@ pub enum Expr {
     Sub(Box<Expr>, Box<Expr>),
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
+
+    Band(Box<Expr>, Box<Expr>),
+    Bor(Box<Expr>, Box<Expr>),
+    Nxor(Box<Expr>, Box<Expr>),
+    Bnot(Box<Expr>),
+    Blshift(Box<Expr>, Box<Expr>),
+    Brshift(Box<Expr>, Box<Expr>),
 
     Break,
     /** where the last expr is returned*/
@@ -38,6 +46,14 @@ pub enum Expr {
 }
 
 impl Expr {
+    fn args(lhs: &Box<Expr>, rhs: &Box<Expr>, arg: &str) -> String {
+        let mut r = String::from("(");
+        r.push_str(&*lhs.to_string());
+        r.push_str(arg);
+        r.push_str(&*rhs.to_string());
+        r.push(')');
+        r
+    }
     // used to print the AST before it gets compiled
     #[allow(dead_code)]
     fn to_string(self: &Expr) -> String {
@@ -70,77 +86,28 @@ impl Expr {
                 text.push_str(&id);
                 text
             }
-            Expr::Add(lhs, rhs) => {
-                let mut r = String::from("(");
-                r.push_str(&*lhs.to_string());
-                r.push_str(" + ");
-                r.push_str(&*rhs.to_string());
-                r.push(')');
-                r
-            }
-            Expr::Sub(lhs, rhs) => {
-                let mut r = String::from("(");
-                r.push_str(&*lhs.to_string());
-                r.push_str(" - ");
-                r.push_str(&*rhs.to_string());
-                r.push(')');
-                r
-            }
-            Expr::Mul(lhs, rhs) => {
-                let mut r = String::from("(");
-                r.push_str(&*lhs.to_string());
-                r.push_str(" * ");
-                r.push_str(&*rhs.to_string());
-                r.push(')');
-                r
-            }
-            Expr::Div(lhs, rhs) => {
-                let mut r = String::from("(");
-                r.push_str(&*lhs.to_string());
-                r.push_str(" / ");
-                r.push_str(&*rhs.to_string());
-                r.push(')');
-                r
-            }
-            Expr::Eq(lhs, rhs) => {
-                let mut r = String::from("(");
-                r.push_str(&*lhs.to_string());
-                r.push_str(" == ");
-                r.push_str(&*rhs.to_string());
-                r.push(')');
-                r
-            }
-            Expr::Ne(lhs, rhs) => {
-                let mut r = String::from("(");
-                r.push_str(&*lhs.to_string());
-                r.push_str(" != ");
-                r.push_str(&*rhs.to_string());
-                r.push(')');
-                r
-            }
-            Expr::Lt(lhs, rhs) => {
-                let mut r = String::from("(");
-                r.push_str(&*lhs.to_string());
-                r.push_str(" < ");
-                r.push_str(&*rhs.to_string());
-                r.push(')');
-                r
-            }
-            Expr::Le(lhs, rhs) => {
-                let mut r = String::from("(");
-                r.push_str(&*lhs.to_string());
-                r.push_str(" <= ");
-                r.push_str(&*rhs.to_string());
-                r.push(')');
-                r
-            }
-            Expr::Ge(lhs, rhs) => {
-                let mut r = String::from("(");
-                r.push_str(&*lhs.to_string());
-                r.push_str(" >= ");
-                r.push_str(&*rhs.to_string());
-                r.push(')');
-                r
+            Expr::Add(lhs, rhs) => Expr::args(lhs, rhs, " + "),
+            Expr::Sub(lhs, rhs) => Expr::args(lhs, rhs, " - "),
+            Expr::Mul(lhs, rhs) => Expr::args(lhs, rhs, " * "),
+            Expr::Div(lhs, rhs) => Expr::args(lhs, rhs, " / "),
+            Expr::Eq(lhs, rhs) => Expr::args(lhs, rhs, " == "),
+            Expr::Ne(lhs, rhs) => Expr::args(lhs, rhs, " != "),
+            Expr::Lt(lhs, rhs) => Expr::args(lhs, rhs, " < "),
+            Expr::Le(lhs, rhs) => Expr::args(lhs, rhs, " <= "),
+            Expr::Ge(lhs, rhs) => Expr::args(lhs, rhs, " >= "),
+
+            Expr::Band(lhs, rhs) => Expr::args(lhs, rhs, " and "),
+
+            Expr::Blshift(lhs, rhs) => Expr::args(lhs, rhs, " << "),
+
+            Expr::Brshift(lhs, rhs) => Expr::args(lhs, rhs, " >> "),
+            Expr::Nxor(lhs, rhs) => Expr::args(lhs, rhs, " xor "),
+            Expr::Bor(lhs, rhs) => Expr::args(lhs, rhs, " or "),
+            Expr::Bnot(arg) => {
+                let mut text = String::from("not (");
+                text.push_str(&arg.to_string());
+                text.push(')');
+                text
             }
 
             Expr::If(cond, then_body) => {
@@ -199,7 +166,7 @@ impl TokenIter {
         return TokenIter {
             index: 0usize,
             data,
-            consts_strings: Vec::new(),
+            consts_strings: vec![String::from("%s"), String::from("%d")],
         };
     }
 
@@ -321,7 +288,7 @@ impl TokenIter {
                     }
                 }
 
-                Ok(Expr::Call(TokenIter::parse_call(id), arguments))
+                Ok(TokenIter::parse_call(id, arguments))
             }
             _ => {
                 self.itt();
@@ -367,24 +334,109 @@ impl TokenIter {
         }
     }
 
-    fn term(self: &mut TokenIter, self_contained: bool) -> Result<Expr, String> {
+    fn power(self: &mut TokenIter, self_contained: bool) -> Result<Expr, String> {
         let mut node = self.factor(self_contained)?;
+
+        loop {
+            let token = self.current();
+            if token == &Token::POW {
+                self.itt();
+
+                /*int ipow(int base, int exp)
+                {
+                    int result = 1;
+                    for (;;)
+                    {
+                        if (exp & 1)
+                            result *= base;
+                        exp >>= 1;
+                        if (!exp)
+                            break;
+                        base *= base;
+                    }
+
+                    return result;
+                }*/
+
+                let result = "_result".to_string();
+                let base = "_base".to_string();
+                let exp = "_exp".to_string();
+
+                node = Expr::Field(vec![
+                    Expr::Assign(base.clone(), Box::new(node)),
+                    Expr::Assign(exp.clone(), Box::new(self.factor(self_contained)?)),
+                    Expr::Assign(result.clone(), Box::new(Expr::Int(1))),
+                    Expr::WhileLoop(
+                        Box::new(Expr::Eq(Box::new(Expr::Int(0)), Box::new(Expr::Int(0)))),
+                        Box::new(Expr::Field(vec![
+                            Expr::If(
+                                Box::new(Expr::Eq(
+                                    Box::new(Expr::Band(
+                                        Box::new(Expr::Identifier(exp.clone())),
+                                        Box::new(Expr::Int(1)),
+                                    )),
+                                    Box::new(Expr::Int(1)),
+                                )),
+                                Box::new(Expr::Assign(
+                                    result.clone(),
+                                    Box::new(Expr::Mul(
+                                        Box::new(Expr::Identifier(result.clone())),
+                                        Box::new(Expr::Identifier(base.clone())),
+                                    )),
+                                )),
+                            ),
+                            Expr::Assign(
+                                exp.clone(),
+                                Box::new(Expr::Brshift(
+                                    Box::new(Expr::Identifier(exp.clone())),
+                                    Box::new(Expr::Int(1)),
+                                )),
+                            ),
+                            Expr::If(
+                                Box::new(Expr::Le(
+                                    Box::new(Expr::Identifier(exp.clone())),
+                                    Box::new(Expr::Int(0)),
+                                )),
+                                Box::new(Expr::Break),
+                            ),
+                            Expr::Assign(
+                                base.clone(),
+                                Box::new(Expr::Mul(
+                                    Box::new(Expr::Identifier(base.clone())),
+                                    Box::new(Expr::Identifier(base.clone())),
+                                )),
+                            ),
+                        ])),
+                    ),
+                    Expr::Identifier(result.clone())
+                ])
+
+                /**/
+                // node = Expr::Call("pow".to_string(), vec![node, self.factor(self_contained)?]);
+            } else {
+                break Ok(node);
+            }
+        }
+    }
+
+    fn term(self: &mut TokenIter, self_contained: bool) -> Result<Expr, String> {
+        let mut node = self.power(self_contained)?;
         loop {
             let token = self.current();
             if token == &Token::TIMES {
-                self.next();
-                node = Expr::Mul(Box::new(node), Box::new(self.factor(self_contained)?));
+                self.itt();
+                node = Expr::Mul(Box::new(node), Box::new(self.power(self_contained)?));
             } else if token == &Token::DIVIDE {
-                self.next();
-                node = Expr::Div(Box::new(node), Box::new(self.factor(self_contained)?));
+                self.itt();
+                node = Expr::Div(Box::new(node), Box::new(self.power(self_contained)?));
             } else if token == &Token::MODULUS {
                 //a % b = a - (b * int(a/b))
-                self.next();
+                self.itt();
                 let mod_a = "_mod_a".to_string();
                 let mod_b = "_mod_b".to_string();
                 node = Expr::Field(vec![
                     Expr::Assign(mod_a.clone(), Box::new(node)),
-                    Expr::Assign(mod_b.clone(), Box::new(self.factor(self_contained)?)),
+                    Expr::Assign(mod_b.clone(), Box::new(self.power(self_contained)?)),
                     Expr::Sub(
                         Box::new(Expr::Identifier(mod_a.clone())),
                         Box::new(Expr::Mul(
@@ -407,14 +459,36 @@ impl TokenIter {
 
         loop {
             let token = self.current();
-            if token == &Token::PLUS {
-                self.next();
-                node = Expr::Add(Box::new(node), Box::new(self.term(self_contained)?));
-            } else if token == &Token::MINUS {
-                self.next();
-                node = Expr::Sub(Box::new(node), Box::new(self.term(self_contained)?));
-            } else {
-                break Ok(node);
+            match token {
+                &Token::PLUS => {
+                    self.itt();
+                    node = Expr::Add(Box::new(node), Box::new(self.term(self_contained)?));
+                }
+                &Token::MINUS => {
+                    self.itt();
+                    node = Expr::Sub(Box::new(node), Box::new(self.term(self_contained)?));
+                }
+                &Token::BITAND => {
+                    self.itt();
+                    node = Expr::Band(Box::new(node), Box::new(self.term(self_contained)?));
+                }
+                &Token::BITLSHIFT => {
+                    self.itt();
+                    node = Expr::Blshift(Box::new(node), Box::new(self.term(self_contained)?));
+                }
+                &Token::BITRSHIFT => {
+                    self.itt();
+                    node = Expr::Brshift(Box::new(node), Box::new(self.term(self_contained)?));
+                }
+                &Token::BITXOR => {
+                    self.itt();
+                    node = Expr::Nxor(Box::new(node), Box::new(self.term(self_contained)?));
+                }
+                &Token::BITOR => {
+                    self.itt();
+                    node = Expr::Bor(Box::new(node), Box::new(self.term(self_contained)?));
+                }
+                _ => break Ok(node),
             }
         }
     }
@@ -489,12 +563,12 @@ impl TokenIter {
 
             Token::WHILE => {
                 self.eat(&Token::WHILE, None)?;
-                let cond = if self.current() == &Token::LCURLY  {
-                    Expr::Eq(Box::new(Expr::Int(0)),Box::new(Expr::Int(0)))
+                let cond = if self.current() == &Token::LCURLY {
+                    Expr::Eq(Box::new(Expr::Int(0)), Box::new(Expr::Int(0)))
                 } else {
                     self.accept_cond()?
                 };
-               
+
                 let body = self.accept_field()?;
                 Ok(Expr::WhileLoop(Box::new(cond), Box::new(body)))
             }
@@ -528,28 +602,42 @@ impl TokenIter {
                 let then_body = Expr::Break;
                 Ok(Expr::If(Box::new(cond), Box::new(then_body)))
             }
+            Token::BITNOT => {
+                self.eat(&Token::BITNOT, None)?;
+                Ok(Expr::Bnot(Box::new(self.accept_math()?)))
+            }
             Token::INT(int_ptr) => {
                 let int = *int_ptr;
                 match self.peek() {
                     Token::TIMES => self.accept_math(),
                     Token::MINUS => self.accept_math(),
+                    Token::POW => self.accept_math(),
                     Token::PLUS => self.accept_math(),
                     Token::DIVIDE => self.accept_math(),
+                    Token::BITAND => self.accept_math(),
+                    Token::BITLSHIFT => self.accept_math(),
+                    Token::BITRSHIFT => self.accept_math(),
+                    Token::BITOR => self.accept_math(),
+                    Token::BITXOR => self.accept_math(),
                     _ => {
                         self.itt();
-                        Ok(Expr::Int(int)) //TODO
+                        Ok(Expr::Int(int))
                     }
                 }
             }
             Token::IDENTIFIER(_) => self.accept_math(),
             Token::STRING(str_ptr) => {
                 let string_data = str_ptr.to_string();
-                self.consts_strings.push(string_data.replace("\\n", "\n"));
                 self.itt();
-                Ok(Expr::String(self.consts_strings.len() as i64 - 1))
+                Ok(self.push_str(string_data))
             }
             _ => Err(self.get_stacktrace("accept_expr".to_string())),
         }
+    }
+
+    fn push_str(self: &mut TokenIter, string: String) -> Expr {
+        self.consts_strings.push(string.replace("\\n", "\n"));
+        Expr::String(self.consts_strings.len() as i64 - 1)
     }
 
     fn accept_field_lines(self: &mut TokenIter) -> Result<Vec<Expr>, String> {
@@ -578,7 +666,7 @@ impl TokenIter {
         Ok(Expr::Field(self.accept_field_lines()?))
     }
 
-    fn parse_call(id: String) -> String {
+    fn parse_call_name(id: String) -> String {
         match id.as_ref() {
             "yell" => String::from("printf"),
             _ => {
@@ -586,6 +674,40 @@ impl TokenIter {
                 name.push_str(&id);
                 name
             }
+        }
+    }
+
+    fn is_string(expr: &Expr) -> bool {
+        match expr {
+            Expr::Field(args) => TokenIter::is_string(args.last().expect("Field with 0 arguments")),
+            Expr::String(_) => true,
+            _ => false,
+        }
+    }
+
+    fn parse_call(id: String, arguments: Vec<Expr>) -> Expr {
+        match id.as_ref() {
+            "scream" => {
+                let mut lines: Vec<Expr> = Vec::new();
+                for expr in arguments {
+                    let is_string = TokenIter::is_string(&expr);
+
+                    if is_string {
+                        lines.push(Expr::Call(
+                            "printf".to_string(),
+                            vec![Expr::String(0), expr],
+                        ))
+                    } else {
+                        lines.push(Expr::Call(
+                            "printf".to_string(),
+                            vec![Expr::String(1), expr],
+                        ))
+                    }
+                }
+
+                Expr::Field(lines)
+            }
+            _ => Expr::Call(TokenIter::parse_call_name(id), arguments),
         }
     }
 
@@ -604,12 +726,19 @@ impl TokenIter {
             }
         }
 
-        let stmts = self.accept_field()?;
+        let stmts = self.accept_field_lines()?;
+        /*stmts.insert(
+            0,
+            Expr::Call(
+                "setlocale".to_string(),
+                vec![Expr::Int(0), self.push_str("en_US.utf8".to_string())],
+            ),
+        );*/
 
         Ok(ParserFunction {
-            name: TokenIter::parse_call(name),
+            name: TokenIter::parse_call_name(name),
             arguments,
-            stmts,
+            stmts: Expr::Field(stmts),
         })
     }
 }
@@ -628,12 +757,12 @@ pub fn get_functions(tokens: Vec<Token>) {
     if let Err(err_string) = result {
         println!("{}", err_string);
     } else if let Ok(ok_expr) = result {
-        //println!("=========");
-        //for (is_main, func) in &ok_expr {
-        //    println!("{} {}", is_main, func.name);
-        //    println!("{}", func.stmts.to_string());
-        //}
-        //println!("=========");
+        println!("=========");
+        for (is_main, func) in &ok_expr {
+            println!("{} {}", is_main, func.name);
+            println!("{}", func.stmts.to_string());
+        }
+        println!("=========");
 
         let mut jit = jit::JIT::default();
 

@@ -166,7 +166,7 @@ impl JIT {
         trans.builder.finalize();
 
         // print Cranelift IR. for debuging
-        
+
         //let flags = settings::Flags::new(settings::builder());
         //let res = codegen::verify_function(&self.ctx.func, &flags);
         //println!("{}", &self.ctx.func.display(None));
@@ -275,6 +275,35 @@ impl<'a> FunctionTranslator<'a> {
 
                 Value::from_u32(0)
             }
+            Expr::Band(a, b) => {
+                let lhs = self.translate_expr(*a);
+                let rhs = self.translate_expr(*b);
+                self.builder.ins().band(lhs, rhs)
+            }
+            Expr::Bor(a, b) => {
+                let lhs = self.translate_expr(*a);
+                let rhs = self.translate_expr(*b);
+                self.builder.ins().bor(lhs, rhs)
+            }
+            Expr::Nxor(a, b) => {
+                let lhs = self.translate_expr(*a);
+                let rhs = self.translate_expr(*b);
+                self.builder.ins().bxor(lhs, rhs)
+            }
+            Expr::Bnot(a) => {
+                let lhs = self.translate_expr(*a);
+                self.builder.ins().bnot(lhs)
+            }
+            Expr::Blshift(a, b) => {
+                let lhs = self.translate_expr(*a);
+                let rhs = self.translate_expr(*b);
+                self.builder.ins().ishl(lhs, rhs)
+            }
+            Expr::Brshift(a, b) => {
+                let lhs = self.translate_expr(*a);
+                let rhs = self.translate_expr(*b);
+                self.builder.ins().ushr(lhs, rhs)
+            }
         }
     }
 
@@ -292,6 +321,7 @@ impl<'a> FunctionTranslator<'a> {
         let lhs = self.translate_expr(lhs);
         let rhs = self.translate_expr(rhs);
         let c = self.builder.ins().icmp(cmp, lhs, rhs);
+
         self.builder.ins().bint(self.int, c)
     }
 
@@ -519,6 +549,32 @@ fn declare_variables_in_stmt(
             declare_variables_in_stmt(int, builder, variables, index, &a);
             declare_variables_in_stmt(int, builder, variables, index, &b);
         }
+
+        Expr::Bnot(ref a) => {
+            declare_variables_in_stmt(int, builder, variables, index, &a);
+        }
+
+        Expr::Band(ref a, ref b) => {
+            declare_variables_in_stmt(int, builder, variables, index, &a);
+            declare_variables_in_stmt(int, builder, variables, index, &b);
+        }
+        Expr::Bor(ref a, ref b) => {
+            declare_variables_in_stmt(int, builder, variables, index, &a);
+            declare_variables_in_stmt(int, builder, variables, index, &b);
+        }
+        Expr::Nxor(ref a, ref b) => {
+            declare_variables_in_stmt(int, builder, variables, index, &a);
+            declare_variables_in_stmt(int, builder, variables, index, &b);
+        }
+        Expr::Blshift(ref a, ref b) => {
+            declare_variables_in_stmt(int, builder, variables, index, &a);
+            declare_variables_in_stmt(int, builder, variables, index, &b);
+        }
+        Expr::Brshift(ref a, ref b) => {
+            declare_variables_in_stmt(int, builder, variables, index, &a);
+            declare_variables_in_stmt(int, builder, variables, index, &b);
+        }
+
         _ => (),
     }
 }
