@@ -9,7 +9,7 @@ Functions can be declared out of order (fuck you c++).
 Snake case is also not alowed anywhere as the lexer does not registrer "_"
 
 Supported operators:
-`+`,`-`,`*`,`/`,`^`
+`+`,`-`,`*`,`/`,`^`,`%`
 
 Supported bitwises operators:
 `and`,`or`,`xor`,`left`,`right`,`not`
