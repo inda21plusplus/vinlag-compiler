@@ -8,6 +8,14 @@ Functions can be declared out of order (fuck you c++).
 
 Snake case is also not alowed anywhere as the lexer does not registrer "_"
 
+Supported operators:
+`+`,`-`,`*`,`/`,`^`
+
+Supported bitwises operators:
+`and`,`or`,`xor`,`left`,`right`,`not`
+
+Supported comparison: `==`,`!=`,`>=`,`<=`,`>`,`<`
+
 Hello world looks like this:
 1. `seed` for main (and `farm` for function)
 2. `yell` instead of printf
