@@ -362,9 +362,7 @@ impl TokenIter {
                 let id = string_ptr.to_string();
                 self.accept_identifier(id, self_contained)
             }
-            Token::IF => {
-                Ok(self.accept_expr()?)
-            }
+            Token::IF => Ok(self.accept_expr()?),
             _ => Err(self.get_stacktrace("factor".to_string())),
         }
     }
@@ -488,6 +486,19 @@ impl TokenIter {
                     ),
                 ]))
             }
+
+            Token::WHILE => {
+                self.eat(&Token::WHILE, None)?;
+                let cond = if self.current() == &Token::LCURLY  {
+                    Expr::Eq(Box::new(Expr::Int(0)),Box::new(Expr::Int(0)))
+                } else {
+                    self.accept_cond()?
+                };
+               
+                let body = self.accept_field()?;
+                Ok(Expr::WhileLoop(Box::new(cond), Box::new(body)))
+            }
+
             Token::BREAK => {
                 self.eat(&Token::BREAK, None)?;
 
@@ -593,7 +604,6 @@ impl TokenIter {
             }
         }
 
-
         let stmts = self.accept_field()?;
 
         Ok(ParserFunction {
@@ -638,7 +648,7 @@ pub fn get_functions(tokens: Vec<Token>) {
 
         unsafe {
             let result = run_code(&mut jit, ok_expr, ());
-           // println!("\nDONE!");
+            // println!("\nDONE!");
             if let Ok(exit_code) = result {
                 println!("Exit code {}", exit_code);
             } else if let Err(err) = result {

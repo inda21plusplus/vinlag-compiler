@@ -53,6 +53,8 @@ seed main() {
 ```
 break exists for loop, and has 2 options `br` and `ifbr`, `ifbr` takes an argument like `x == 5` and will expand to `if x == 5 { br }`
 
+`while` loops exist too, and has an optinal condition, so `while {` will expand to `while 1 == 1 {`. (`for` loops expand to `while` loops.)
+
 If statments will return the value inside just like `{ ... }` but will return `0` if not met. `else if` and `else` also exist.
 
 ```
