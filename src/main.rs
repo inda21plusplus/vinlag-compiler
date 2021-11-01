@@ -121,6 +121,8 @@ const BITNOT_TEXT: &str = "not";
 const BITLSHIFT_TEXT: &str = "left";
 const BITRSHIFT_TEXT: &str = "right";
 
+const SINGLE_LINE_COMMENT: char = '#';
+const MULTI_LINE_COMMENT: char = '*';
 
 fn next_char(indec: &mut std::str::CharIndices) -> Option<char> {
     if let Some((_, c)) = indec.next() {
@@ -140,8 +142,54 @@ fn get_tokens(buffer: &String) -> Vec<Token> {
 
     let mut last_char: Option<char> = next_char(&mut indec);
 
+    let mut comment_index = 0;
+    let mut is_single_comment = false;
+
     loop {
         if let Some(currrent_char) = last_char {
+            if is_single_comment {
+                match currrent_char {
+                    '\n' | SINGLE_LINE_COMMENT => {
+                        is_single_comment = false;
+                    }
+                    _ => ()
+                }
+                last_char = next_char(&mut indec);
+                continue;
+            }
+
+            if comment_index > 0 {
+                last_char = next_char(&mut indec);
+                match currrent_char {
+                    SINGLE_LINE_COMMENT => {
+                        if last_char == Some(MULTI_LINE_COMMENT) {
+                            comment_index -= 1;
+                        }
+                    }
+
+                    MULTI_LINE_COMMENT => {
+                        if last_char == Some(SINGLE_LINE_COMMENT) {
+                            comment_index += 1;
+                        }
+                    }
+
+                    _ => ()
+                }
+            }
+
+            if currrent_char == SINGLE_LINE_COMMENT {
+                last_char = next_char(&mut indec);
+                match last_char {
+                    Some(MULTI_LINE_COMMENT) => {
+                        comment_index = 1;
+                    }
+                    _ => {
+                        is_single_comment = true;
+                    }
+                }
+                continue;
+            }
+            
             if currrent_char.is_whitespace() {
                 last_char = next_char(&mut indec);
                 continue;
