@@ -1,3 +1,5 @@
-#seed# main() {	
-	20 #* 10
+#seed for main, and farm for functions
+seed main() {
+	scream("Hello World!\n")
+	42
 }

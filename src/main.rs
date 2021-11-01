@@ -163,18 +163,19 @@ fn get_tokens(buffer: &String) -> Vec<Token> {
                 match currrent_char {
                     SINGLE_LINE_COMMENT => {
                         if last_char == Some(MULTI_LINE_COMMENT) {
-                            comment_index -= 1;
+                            comment_index += 1;
                         }
                     }
 
                     MULTI_LINE_COMMENT => {
                         if last_char == Some(SINGLE_LINE_COMMENT) {
-                            comment_index += 1;
+                            comment_index -= 1;
                         }
                     }
 
                     _ => ()
                 }
+                continue;   
             }
 
             if currrent_char == SINGLE_LINE_COMMENT {
